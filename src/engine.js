@@ -8,8 +8,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 export function start(photoUrl) {
 
 const $=i=>document.getElementById(i),clamp=(v,a=0,b=1)=>Math.min(b,Math.max(a,v)),reduce=matchMedia('(prefers-reduced-motion:reduce)').matches,T0=performance.now();
-let W=innerWidth,H=innerHeight,ip=0,tp=0,cp=0,mx=0,my=0,lt=0,ptOK=false,pdn=0,lamp=1,lampT=1,upd=()=>{},rs=()=>{};
-let raf=0,tm=0,dead=false,disposeGL=()=>{};const offs=[],listen=(t,n,f)=>{t.addEventListener(n,f);offs.push(()=>t.removeEventListener(n,f))},hudEl=$('hud');
+let W=innerWidth,H=innerHeight,ip=0,tp=0,cp=0,mx=0,my=0,lt=0,ptOK=false,pdn=0,lamp=.37,lampT=.37,upd=()=>{},rs=()=>{};
+let raf=0,tm=0,dead=false,paused=false,disposeGL=()=>{};const offs=[],listen=(t,n,f)=>{t.addEventListener(n,f);offs.push(()=>t.removeEventListener(n,f))},hudEl=$('hud');
 
 /* intro: scrambling title, then your photo assembles from dust */
 const pc=$('pc'),c2=pc.getContext('2d'),intro=$('intro'),title=$('ptitle'),dot=$('dot'),Pt=[],img=new Image(),ST=reduce?-9:3.3,G='ABCDEFGHIJKLMNOPQRSTUVWXYZ!#%&*+?/';
@@ -37,7 +37,7 @@ const T=THREE,FOG=0xc9ced9,R=new T.WebGLRenderer({canvas:$('gl'),antialias:true}
 disposeGL=()=>R.dispose();R.setPixelRatio(Math.min(devicePixelRatio,1.5));R.setClearColor(FOG);scene.fog=new T.Fog(FOG,16,95);
 scene.add(new T.HemisphereLight(0xe8ecf7,0x7a8091,.85));
 const sun=new T.DirectionalLight(0xffffff,.55);sun.position.set(-12,18,9);scene.add(sun);
-const warm=new T.PointLight(0xfff1dc,2.2,16);warm.position.set(0,1.6,0);scene.add(warm);
+const warm=new T.PointLight(0xfff1dc,1.3,9);warm.position.set(0,1.6,0);scene.add(warm);
 const rock=(()=>{const S=256,c=document.createElement('canvas');c.width=c.height=S;const x=c.getContext('2d'),im=x.createImageData(S,S),oc=[],sf=t=>t*t*(3-2*t);
 for(let o=0;o<4;o++){const m=8<<o;oc.push([m,Array.from({length:m*m},Math.random)])}
 for(let j=0;j<S;j++)for(let i=0;i<S;i++){let v=0,a=.55;
@@ -45,7 +45,7 @@ for(let j=0;j<S;j++)for(let i=0;i<S;i++){let v=0,a=.55;
     v+=a*((q(i0,j0)*(1-fu)+q(i0+1,j0)*fu)*(1-fw)+(q(i0,j0+1)*(1-fu)+q(i0+1,j0+1)*fu)*fw);a*=.55}
   const b=clamp(v*.95)*255,k=(j*S+i)*4;im.data[k]=im.data[k+1]=im.data[k+2]=b;im.data[k+3]=255}
 x.putImageData(im,0,0);const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;return t})();
-const rt=rock.clone();rt.needsUpdate=true;rt.repeat.set(60,60);
+const rt=rock.clone();rt.needsUpdate=true;rt.repeat.set(40,40);
 // terrain
 const ss=(a,b,x)=>{x=clamp((x-a)/(b-a));return x*x*(3-2*x)},tg=new T.PlaneGeometry(260,260,170,170);tg.rotateX(-Math.PI/2);
 const pa=tg.attributes.position,cl=new Float32Array(pa.count*3);
@@ -54,7 +54,7 @@ for(let i=0;i<pa.count;i++){const x=pa.getX(i),z=pa.getZ(i),d=Math.hypot(x,z);le
   const y=ss(7,40,d)*(v*5+4+ss(30,110,d)*16),c=.4+.3*ss(0,22,y)+.05*Math.sin(x*.9)*Math.cos(z*.8);
   pa.setY(i,y);cl.set([c*.9,c*.93,c],i*3)}
 tg.setAttribute('color',new T.BufferAttribute(cl,3));tg.computeVertexNormals();
-scene.add(new T.Mesh(tg,new T.MeshStandardMaterial({vertexColors:true,roughness:1,bumpMap:rt,bumpScale:1.2})));
+scene.add(new T.Mesh(tg,new T.MeshStandardMaterial({vertexColors:true,roughness:1,bumpMap:rt,bumpScale:.5})));
 // igloo
 const g=new T.Group(),FL=[],O=new T.Vector3();scene.add(g);
 function rbox(w,h,d,r,k){const n=2*k+1,bg=new T.BoxGeometry(1,1,1,n,n,n),p=bg.attributes.position,nr=bg.attributes.normal,uv=bg.attributes.uv,hs=.5/n,bx=w/2-r,by=h/2-r,bz=d/2-r,v=new T.Vector3(),o1=Math.random(),o2=Math.random();
@@ -104,15 +104,15 @@ const rings=[[2.3,5],[3.5,6],[4.7,8]].map(([Rr,n],k)=>{const rg=new T.Group();
 const cm=new T.SpriteMaterial({map:new T.CanvasTexture(cv),transparent:true,opacity:.28,depthWrite:false});
 for(let i=0;i<16;i++){const s=new T.Sprite(cm),a=Math.random()*6.283,r=10+Math.random()*16;s.position.set(Math.cos(a)*r,(Math.random()-.5)*14,Math.sin(a)*r-6);s.scale.setScalar(14+Math.random()*16);RG.add(s)}
 // bloom makes the inner light bleed through the gaps
-let comp=null,bloom={};try{comp=new EffectComposer(R);comp.addPass(new RenderPass(scene,cam));comp.addPass(bloom=new UnrealBloomPass(new T.Vector2(W,H),.9,.75,.9))}catch(e){comp=null}
+let comp=null,bloom={};try{comp=new EffectComposer(R);comp.addPass(new RenderPass(scene,cam));comp.addPass(bloom=new UnrealBloomPass(new T.Vector2(W,H),.4,.5,.88))}catch(e){comp=null}
 // camera flight: orbit the igloo, then climb into the clouds
 const CP=new T.CatmullRomCurve3(V([[7.5,3.4,9.5],[11.5,2.6,.5],[5,3.2,-10.5],[-9.5,3.4,-6],[-10.5,2.6,5.5],[-3,3.2,11],[-2,16,13],[3,45,15],[6,74,13],[-4,82,12]])),
 CL=new T.CatmullRomCurve3(V([[0,1.7,0],[0,1.7,0],[0,1.6,0],[0,1.7,0],[0,1.5,0],[0,1.7,0],[0,8,0],[0,50,0],[0,80,0],[0,80,0]])),sm={x:0,y:0};
 rs=()=>{R.setSize(W,H,false);comp&&comp.setSize(W,H);cam.aspect=W/H;cam.fov=W/H<1?70:48;cam.updateProjectionMatrix()};rs();
 const rc=new T.Raycaster(),qw=new T.Quaternion(),ax=new T.Vector3(1,0,.3).normalize();let hov=null,boost=0;
 const halo=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(cv),color:0xdfeaff,transparent:true,opacity:.5,blending:T.AdditiveBlending,depthWrite:false}));
-halo.position.copy(dir).multiplyScalar(RR+.9);halo.position.y=.7;halo.scale.setScalar(4.2);scene.add(halo);
-const spill=new T.PointLight(0xdfeaff,1.4,10);spill.position.copy(dir).multiplyScalar(RR+1.8);spill.position.y=.6;scene.add(spill);
+halo.position.copy(dir).multiplyScalar(RR+.9);halo.position.y=.7;halo.scale.setScalar(3.4);scene.add(halo);
+const spill=new T.PointLight(0xdfeaff,.55,7);spill.position.copy(dir).multiplyScalar(RR+1.8);spill.position.y=.6;scene.add(spill);
 const kick=(m,s)=>BK.forEach(b=>{const d=b.userData.p0.distanceTo(m.userData.p0);if(d<1.8)b.userData.v+=s*Math.pow(1-d/1.8,2)});
 upd=(t,dt)=>{
   const kf=1-Math.exp(-dt*4);
@@ -129,15 +129,18 @@ upd=(t,dt)=>{
       u.v+=(95*(tg-u.x)-6.5*u.v)*dt;u.x+=u.v*dt;
       b.position.copy(u.p0).addScaledVector(u.n,u.x);if(u.ph!==undefined)b.position.y+=Math.sin(t*.9+u.ph)*.07;
       b.scale.setScalar(1+u.x*.35);b.quaternion.copy(u.q0).multiply(qw.setFromAxisAngle(ax,u.x*1.1));
-      b.material.emissiveIntensity=u.e+Math.max(0,u.x)*2.4})}
+      b.material.emissiveIntensity=u.e+Math.max(0,u.x)*1.4})}
   // inner light: breathes, swells while a block is touched, can be switched off
   lamp+=(lampT-lamp)*kf;boost+=((hov?1:0)-boost)*kf*1.5;
-  glowM.color.setScalar(.15+.85*lamp);warm.intensity=lamp*(2.2+Math.sin(t*2.3)*.15+boost*2.2);
-  spill.intensity=lamp*(1.4+boost);halo.material.opacity=lamp*(.42+boost*.3);bloom.strength=.15+lamp*(.9+boost*.45);
+  glowM.color.setScalar(.3+.7*Math.min(1,lamp*3));          // inner glow: white once the lamp is on
+  warm.intensity=lamp*(1.3+Math.sin(t*2.3)*.06+boost*.9);  // light on the inside of the blocks
+  spill.intensity=lamp*(.55+boost*.45);                      // light spilling onto the snow
+  halo.material.opacity=lamp*(.16+boost*.1);
+  const bf=clamp(1-(cp-.45)/.15);bloom.strength=bf*lamp*(.62+boost*.15);
   const pts=FL.slice(0,5).map(m=>{q.copy(m.position).project(cam);return[(q.x*.5+.5)*W,(-q.y*.5+.5)*H]});
   TX.forEach((e,i)=>{e.setAttribute('x',pts[i][0]-3);e.setAttribute('y',pts[i][1]+3)});
   pl.setAttribute('points',pts.slice().sort((a,b)=>a[0]-b[0]).map(p=>p.join(',')).join(' '));
-  hud.style.opacity=ip*clamp(1-cp*5);comp?comp.render():R.render(scene,cam)};
+  hud.style.opacity=ip*clamp(1-cp*5);comp&&bf>0?comp.render():R.render(scene,cam)};
 })()}catch(e){console.warn(e)}
 
 function size(){W=innerWidth;H=innerHeight;pc.width=W;pc.height=H;rs()}
@@ -152,17 +155,11 @@ function frame(now){
   const t=(now-T0)/1000,dt=Math.min(.05,t-lt);lt=t;
   const max=document.documentElement.scrollHeight-H,s0=H*.9;
   ip=clamp(scrollY/(H*.85));tp=max>s0?clamp((scrollY-s0)/(max-s0)):0;cp+=(tp-cp)*(reduce?1:1-Math.exp(-dt*3.2));
-  document.body.style.setProperty('--ip',ip);$('hint').style.opacity=clamp(ip*(1-cp*7));
-  for(const p of panels){const r=p.getBoundingClientRect(),y=p._y||0,o=clamp(Math.min((H*.9-(r.top-y))/(H*.38),(r.bottom-y)/(H*.38))),e=o*o*(3-2*o);p._y=(1-e)*40;p.style.opacity=e;p.style.transform='translateY('+p._y+'px)'}intro.style.opacity=1-ip;intro.style.visibility=ip>=1?'hidden':'visible';
-  drawP(t);upd(t,dt)}
+  document.body.style.setProperty('--ip',ip);$('hint').style.opacity=clamp(ip*(1-cp*7));document.body.style.setProperty('--hud',clamp(1-(scrollY-H*1.1)/(H*.5)));
+  for(const p of panels){const r=p.getBoundingClientRect(),y=p._y||0,o=clamp(Math.min((H*.9-(r.top-y))/(H*.38),(r.bottom-y)/(H*.38))),e=o*o*(3-2*o);if(p._o===undefined||Math.abs(e-p._o)>.002){p._o=e;p._y=(1-e)*40;p.style.opacity=e;p.style.transform='translateY('+p._y+'px)'}}intro.style.opacity=1-ip;intro.style.visibility=ip>=1?'hidden':'visible';
+  drawP(t);if(!paused)upd(t,dt)}
 raf=requestAnimationFrame(frame);
 
-/* light + sound toggles (the buttons live in React) */
-let ac,gn;
-const toggleLight=()=>{lampT=lampT?0:1;return !!lampT};
-const toggleSound=()=>{if(!ac){ac=new AudioContext();const b=ac.createBuffer(1,ac.sampleRate*2,ac.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
-  const s=ac.createBufferSource();s.buffer=b;s.loop=true;const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=380;gn=ac.createGain();gn.gain.value=0;s.connect(f);f.connect(gn);gn.connect(ac.destination);s.start()}
-  const on=gn.gain.value==0;gn.gain.value=on?.12:0;return on};
-const stop=()=>{dead=true;cancelAnimationFrame(raf);clearTimeout(tm);offs.forEach(f=>f());ac&&ac.close();hudEl.replaceChildren();disposeGL()};
-return {stop,toggleLight,toggleSound}
+const stop=()=>{dead=true;cancelAnimationFrame(raf);clearTimeout(tm);offs.forEach(f=>f());hudEl.replaceChildren();disposeGL()};
+return {stop,pause:v=>{paused=v}}
 }
